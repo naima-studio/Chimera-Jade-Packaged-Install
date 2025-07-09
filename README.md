@@ -28,7 +28,7 @@ This process will configure your Raspberry Pi to become a dedicated access point
 1.  **Clone the Repository**
     Log into your Pi via SSH and clone this repository.
     ```bash
-    git clone https://github.com/your-username/PiControlHub.git
+    git clone (https://github.com/naima-studio/Chimera-Jade-Packaged-Install.git)
     cd PiControlHub
     ```
 
