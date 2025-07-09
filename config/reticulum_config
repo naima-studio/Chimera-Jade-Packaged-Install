@@ -1,0 +1,13 @@
+[reticulum]
+
+[[interfaces]]
+  type = RNodeInterface
+  enabled = yes
+  interface = /dev/spidev0.0
+  cs_pin = 8
+  reset_pin = 25
+  frequency = 915000000
+  bandwidth = 125000
+  txpower = 20
+  spreading_factor = 8
+  speed = 500000
