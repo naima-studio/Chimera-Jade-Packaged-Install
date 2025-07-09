@@ -1,4 +1,4 @@
-# Pi Control Hub
+# JemOS
 
 This repository contains all the software needed to turn a Raspberry Pi Zero 2 W into the Chimera Jade: a gateway LoRa messaging device. The device hosts its own Wi-Fi access point and provides a web interface for sending and receiving messages over the Reticulum Network Stack.
 
@@ -29,7 +29,7 @@ This process will configure your Raspberry Pi to become a dedicated access point
     Log into your Pi via SSH and clone this repository.
     ```bash
     git clone (https://github.com/naima-studio/Chimera-Jade-Packaged-Install.git)
-    cd PiControlHub
+    cd Chimera-Jade-Packaged-Install
     ```
 
 2.  **Run the Installer**
