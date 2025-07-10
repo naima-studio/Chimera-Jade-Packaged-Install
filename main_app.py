@@ -5,14 +5,14 @@ import board
 import busio
 import threading
 from digitalio import DigitalInOut, Direction, Pull
-import Adafruit_SSD1306
+import adafruit_ssd1306
 import adafruit_rfm69
 from flask import Flask, render_template
 from flask_socketio import SocketIO
 
 # --- GLOBAL CONFIG & STATE ---
 PI_IP_ADDRESS = "192.168.4.1"
-LXMF_ADDRESS = ""
+LXMF_ADDRESS = None # Initialized to None as a best practice
 
 # --- HARDWARE & DISPLAY THREAD ---
 def hardware_thread_func():
@@ -22,10 +22,14 @@ def hardware_thread_func():
     btnA.pull = Pull.UP
     i2c = busio.I2C(board.SCL, board.SDA)
     reset_pin = DigitalInOut(board.D4)
-    display = Adafruit_SSD1306.SSD1306Base(128, 32, i2c, reset=reset_pin)
+    # Correctly initialize the display using the modern adafruit_ssd1306 library
+    display = adafruit_ssd1306.SSD1306_I2C(128, 32, i2c, reset=reset_pin)
+
+    # Clear display on startup
     display.fill(0)
     display.show()
     time.sleep(1)
+
     CS = DigitalInOut(board.CE0)
     RESET = DigitalInOut(board.D25)
     spi = busio.SPI(board.SCK, MOSI=board.MOSI, MISO=board.MISO)
@@ -34,15 +38,19 @@ def hardware_thread_func():
         display.fill(0)
         try:
             rfm69 = adafruit_rfm69.RFM69(spi, CS, RESET, 915.0)
+            # The .text() method is part of the new library's framebuf extension
             display.text('RFM69: OK', 0, 0, 1)
         except RuntimeError:
             display.text('RFM69: ERROR', 0, 0, 1)
+
         if LXMF_ADDRESS:
             display.text(f"Addr: {LXMF_ADDRESS[:10]}...", 0, 10, 1)
+
         if not btnA.value:
             display.fill(0)
             display.text('Web Interface URL:', 0, 0, 1)
             display.text(f"http://{PI_IP_ADDRESS}:8000", 0, 12, 1)
+
         display.show()
         time.sleep(0.1)
 
