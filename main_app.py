@@ -5,42 +5,48 @@ import board
 import busio
 import threading
 from digitalio import DigitalInOut, Direction, Pull
-import Adafruit_SSD1306
+import adafruit_ssd1306
 import adafruit_rfm69
 from flask import Flask, render_template
 from flask_socketio import SocketIO
 
 # --- GLOBAL CONFIG & STATE ---
 PI_IP_ADDRESS = "192.168.4.1"
-LXMF_ADDRESS = None # Initialized to None as a best practice
+# Removed initial LXMF_ADDRESS = None
 
 # --- HARDWARE & DISPLAY THREAD ---
 def hardware_thread_func():
     global LXMF_ADDRESS
+
     btnA = DigitalInOut(board.D5)
     btnA.direction = Direction.INPUT
     btnA.pull = Pull.UP
+
     i2c = busio.I2C(board.SCL, board.SDA)
     reset_pin = DigitalInOut(board.D4)
-    # Correctly initialize the display using the modern Adafruit_SSD1306 library
-    display = Adafruit_SSD1306.SSD1306Base(128, 32, i2c, reset=reset_pin)
 
-    # Clear display on startup
+    display = adafruit_ssd1306.SSD1306_I2C(128, 32, i2c, reset=reset_pin)
+
     display.fill(0)
     display.show()
     time.sleep(1)
 
     CS = DigitalInOut(board.CE0)
     RESET = DigitalInOut(board.D25)
-    spi = busio.SPI(board.SCK, MOSI=board.MOSI, MISO=board.MISO)
+    spi = busio.SPI(board.SCK, board.MOSI, board.MISO)
+
+    try:
+        rfm69 = adafruit_rfm69.RFM69(spi, CS, RESET, 915.0)
+        rfm69_status = True
+    except RuntimeError:
+        rfm69_status = False
 
     while True:
         display.fill(0)
-        try:
-            rfm69 = adafruit_rfm69.RFM69(spi, CS, RESET, 915.0)
-            # The .text() method is part of the new library's framebuf extension
+
+        if rfm69_status:
             display.text('RFM69: OK', 0, 0, 1)
-        except RuntimeError:
+        else:
             display.text('RFM69: ERROR', 0, 0, 1)
 
         if LXMF_ADDRESS:
@@ -54,15 +60,18 @@ def hardware_thread_func():
         display.show()
         time.sleep(0.1)
 
+
 # --- RETICULUM, LXMF, and FLASK SETUP ---
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'pi-control-hub-secret!'
 socketio = SocketIO(app)
+
 rns = RNS.Reticulum()
 router = LXMF.LXMRouter(storagepath="./lxmf_storage")
 identity = RNS.Identity()
+
 lxmf_destination = router.register_delivery_identity(identity, display_name="PiControlHub")
-LXMF_ADDRESS = RNS.prettyhexrep(lxmf_destination.hash)
+LXMF_ADDRESS = RNS.prettyhexrep(lxmf_destination.hash)  # Assigned once here
 
 def delivery_callback(message):
     message_data = {
