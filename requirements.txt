@@ -18,5 +18,5 @@ lxmf==0.2.1
 # Adafruit Hardware Libraries
 adafruit-blinka>=8.0.0
 adafruit-circuitpython-busdevice==5.2.13
-adafruit-circuitpython-rfm69==2.3.1
+adafruit-circuitpython-rfm69==2.1.25
 Adafruit_SSD1306~=1.6.2
