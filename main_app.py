@@ -5,7 +5,7 @@ import board
 import busio
 import threading
 from digitalio import DigitalInOut, Direction, Pull
-import adafruit_ssd1306
+import Adafruit_SSD1306
 import adafruit_rfm69
 from flask import Flask, render_template
 from flask_socketio import SocketIO
@@ -22,8 +22,8 @@ def hardware_thread_func():
     btnA.pull = Pull.UP
     i2c = busio.I2C(board.SCL, board.SDA)
     reset_pin = DigitalInOut(board.D4)
-    # Correctly initialize the display using the modern adafruit_ssd1306 library
-    display = adafruit_ssd1306.SSD1306_I2C(128, 32, i2c, reset=reset_pin)
+    # Correctly initialize the display using the modern Adafruit_SSD1306 library
+    display = Adafruit_SSD1306.SSD1306_I2C(128, 32, i2c, reset=reset_pin)
 
     # Clear display on startup
     display.fill(0)
