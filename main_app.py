@@ -23,7 +23,7 @@ def hardware_thread_func():
     i2c = busio.I2C(board.SCL, board.SDA)
     reset_pin = DigitalInOut(board.D4)
     # Correctly initialize the display using the modern Adafruit_SSD1306 library
-    display = Adafruit_SSD1306.SSD1306_I2C(128, 32, i2c, reset=reset_pin)
+    display = Adafruit_SSD1306.SSD1306Base(128, 32, i2c, reset=reset_pin)
 
     # Clear display on startup
     display.fill(0)
