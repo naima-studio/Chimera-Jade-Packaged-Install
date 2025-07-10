@@ -5,7 +5,7 @@ import board
 import busio
 import threading
 from digitalio import DigitalInOut, Direction, Pull
-import adafruit_ssd1306
+import Adafruit_ssd1306
 import adafruit_rfm69
 from flask import Flask, render_template
 from flask_socketio import SocketIO
