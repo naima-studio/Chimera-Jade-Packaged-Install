@@ -1,128 +1,191 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Control Center</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js" crossorigin="anonymous"></script>
     <style>
         body { font-family: 'Inter', sans-serif; }
-        .sidebar-menu-item:hover { transform: translateX(4px); background-color: rgba(16, 185, 129, 0.1); }
+
+        /* Added styles for node-item */
+        .node-item {
+            cursor: pointer;
+            transition: transform 0.2s ease, background-color 0.2s ease;
+        }
+        .node-item:hover {
+            transform: translateX(4px);
+            background-color: rgba(16, 185, 129, 0.1);
+        }
+
         .custom-scrollbar::-webkit-scrollbar { width: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #2d574e; border-radius: 3px; }
+
+        .sr-only {
+            position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+            overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+        }
     </style>
 </head>
 <body class="bg-black text-emerald-200">
-    <header class="fixed top-0 left-0 w-full bg-black border-b border-emerald-900 h-16 flex items-center justify-between px-6 z-30">
-        <div class="text-xl font-bold text-emerald-300">Pi Control Hub</div>
-    </header>
+<header class="fixed top-0 left-0 w-full bg-black border-b border-emerald-900 h-16 flex items-center justify-between px-6 z-30">
+    <div class="text-xl font-bold text-emerald-300">Pi Control Hub</div>
+</header>
 
-    <main class="pt-16">
-        <div id="page-messages" class="page container mx-auto p-4">
-            <div class="flex h-[calc(100vh-5rem)] bg-gray-900/50 border border-emerald-900 rounded-xl overflow-hidden">
-                <div class="w-1/3 border-r border-emerald-900 flex flex-col">
-                    <div class="p-4 border-b border-emerald-900">
-                        <h2 class="text-xl font-bold text-emerald-300">Nodes</h2>
-                    </div>
-                    <div id="node-list" class="flex-grow overflow-y-auto custom-scrollbar"></div>
+<main class="pt-16">
+    <div id="page-messages" class="page container mx-auto p-4">
+        <div class="flex h-[calc(100vh-5rem)] bg-gray-900/50 border border-emerald-900 rounded-xl overflow-hidden">
+            <div class="w-1/3 border-r border-emerald-900 flex flex-col">
+                <div class="p-4 border-b border-emerald-900">
+                    <h2 class="text-xl font-bold text-emerald-300">Nodes</h2>
                 </div>
-                <div class="w-2/3 flex flex-col">
-                    <div id="chat-header" class="p-4 border-b border-emerald-900 flex items-center">
-                        <h3 class="text-xl font-bold text-emerald-300">Select a node to begin</h3>
-                    </div>
-                    <div id="chat-window" class="flex-grow p-4 overflow-y-auto custom-scrollbar space-y-4"></div>
-                    <div class="p-4 border-t border-emerald-900">
-                        <div class="flex space-x-2">
-                            <input type="text" id="message-input" placeholder="Type a message..." class="flex-grow bg-gray-800 border border-emerald-800 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-emerald-200" disabled>
-                            <button id="send-button" class="bg-emerald-700 hover:bg-emerald-600 text-white font-bold py-2 px-4 rounded-lg disabled:bg-emerald-900 disabled:cursor-not-allowed" disabled>Send</button>
-                        </div>
+                <div id="node-list" class="flex-grow overflow-y-auto custom-scrollbar"></div>
+            </div>
+            <div class="w-2/3 flex flex-col">
+                <div id="chat-header" class="p-4 border-b border-emerald-900 flex items-center">
+                    <h3 class="text-xl font-bold text-emerald-300">Select a node to begin</h3>
+                </div>
+                <div id="chat-window" class="flex-grow p-4 overflow-y-auto custom-scrollbar space-y-4"></div>
+                <div class="p-4 border-t border-emerald-900">
+                    <div class="flex space-x-2 items-center">
+                        <label for="message-input" class="sr-only">Message Input</label>
+                        <input
+                                type="text"
+                                id="message-input"
+                                placeholder="Type a message..."
+                                class="flex-grow bg-gray-800 border border-emerald-800 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-emerald-200"
+                                disabled
+                        />
+                        <button
+                                id="send-button"
+                                class="bg-emerald-700 hover:bg-emerald-600 text-white font-bold py-2 px-4 rounded-lg disabled:bg-emerald-900 disabled:cursor-not-allowed"
+                                disabled
+                        >
+                            Send
+                        </button>
                     </div>
                 </div>
             </div>
         </div>
-    </main>
+    </div>
+</main>
 
-    <script>
-        const socket = io();
-        let liveNodes = {};
-        let liveMessages = {};
-        let activeNodeId = null;
+<script>
+    if (typeof io === "undefined") {
+        alert("Socket.IO client library failed to load!");
+        throw new Error("Socket.IO client library missing");
+    }
 
-        const nodeList = document.getElementById('node-list');
-        const chatHeader = document.getElementById('chat-header');
-        const chatWindow = document.getElementById('chat-window');
-        const messageInput = document.getElementById('message-input');
-        const sendButton = document.getElementById('send-button');
+    const socket = io();
 
-        function populateNodeList() {
-            nodeList.innerHTML = '';
-            Object.entries(liveNodes).forEach(([nodeId, node]) => {
-                const item = document.createElement('div');
-                item.className = `node-item p-4 cursor-pointer hover:bg-emerald-900/50 ${activeNodeId === nodeId ? 'bg-emerald-800' : ''}`;
-                item.dataset.nodeId = nodeId;
-                item.innerHTML = `<h4 class="font-semibold text-emerald-200">${node.name}</h4>`;
-                nodeList.appendChild(item);
-            });
+    let liveNodes = {};
+    let liveMessages = {};
+    let activeNodeId = null;
+
+    const nodeList = document.getElementById('node-list');
+    const chatHeader = document.getElementById('chat-header');
+    const chatWindow = document.getElementById('chat-window');
+    const messageInput = document.getElementById('message-input');
+    const sendButton = document.getElementById('send-button');
+
+    function populateNodeList() {
+        nodeList.innerHTML = '';
+        const keys = Object.keys(liveNodes);
+        if (keys.length === 0) {
+            nodeList.innerHTML = '<p class="p-4 text-sm text-emerald-400">No nodes available</p>';
+            return;
         }
-
-        function selectNode(nodeId) {
-            activeNodeId = nodeId;
+        keys.forEach((nodeId) => {
             const node = liveNodes[nodeId];
+            const unreadBadge = node.unread && node.unread > 0 && activeNodeId !== nodeId
+                ? `<span class="ml-2 inline-block bg-emerald-600 text-xs rounded-full px-2">${node.unread}</span>`
+                : '';
+            const item = document.createElement('div');
+            item.className = `node-item p-4 cursor-pointer ${activeNodeId === nodeId ? 'bg-emerald-800' : ''}`;
+            item.dataset.nodeId = nodeId;
+            item.innerHTML = `<h4 class="font-semibold text-emerald-200">${node.name}${unreadBadge}</h4>`;
+            nodeList.appendChild(item);
+        });
+    }
+
+    function selectNode(nodeId) {
+        activeNodeId = nodeId;
+        const node = liveNodes[nodeId];
+        if (node) node.unread = 0;
+        populateNodeList();
+        chatHeader.innerHTML = `<h3 class="text-xl font-bold text-emerald-300">${node ? node.name : 'Select a node'}</h3>`;
+        messageInput.disabled = !node;
+        sendButton.disabled = !node;
+        chatWindow.innerHTML = '';
+        if (node && liveMessages[nodeId]) {
+            liveMessages[nodeId].forEach(msg => {
+                const bubble = document.createElement('div');
+                bubble.className = `flex flex-col max-w-xs md:max-w-md p-3 rounded-lg ${msg.from === 'me' ? 'bg-emerald-800 self-end' : 'bg-gray-800 self-start'}`;
+                bubble.innerHTML = `<p>${msg.text}</p><div class="text-xs text-emerald-500 text-right mt-1">${msg.time}</div>`;
+                chatWindow.appendChild(bubble);
+            });
+        }
+        chatWindow.scrollTop = chatWindow.scrollHeight;
+    }
+
+    function sendMessage() {
+        const messageText = messageInput.value.trim();
+        if (!activeNodeId || !messageText) return;
+        if (!socket || typeof socket.emit !== "function") {
+            console.error("Socket is not ready");
+            return;
+        }
+        socket.emit('send_message', { recipient: activeNodeId, content: messageText });
+        if (!liveMessages[activeNodeId]) liveMessages[activeNodeId] = [];
+        liveMessages[activeNodeId].push({
+            from: 'me',
+            text: messageText,
+            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        });
+        messageInput.value = '';
+        selectNode(activeNodeId);
+    }
+
+    socket.on('new_message', function(data) {
+        console.log('Incoming new_message data:', data);
+
+        const nodeId = data.source_hash || data.nodeId || 'unknown-node';
+        const nodeName = data.source_name || data.name || 'Unnamed Node';
+
+        if (!liveNodes[nodeId]) {
+            liveNodes[nodeId] = { name: nodeName, unread: 1, status: 'connected' };
+            liveMessages[nodeId] = [];
+        } else {
+            if (activeNodeId !== nodeId) {
+                liveNodes[nodeId].unread = (liveNodes[nodeId].unread || 0) + 1;
+            }
+        }
+
+        liveMessages[nodeId].push({
+            from: 'them',
+            text: data.content || '',
+            time: new Date((data.timestamp || Date.now() / 1000) * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        });
+
+        if (activeNodeId === nodeId) {
+            selectNode(nodeId);
+        } else {
             populateNodeList();
-            chatHeader.innerHTML = `<h3 class="text-xl font-bold text-emerald-300">${node ? node.name : 'Select a node'}</h3>`;
-            messageInput.disabled = !node;
-            sendButton.disabled = !node;
-            chatWindow.innerHTML = '';
-            if (node && liveMessages[nodeId]) {
-                liveMessages[nodeId].forEach(msg => {
-                    const bubble = document.createElement('div');
-                    bubble.className = `flex flex-col max-w-xs md:max-w-md p-3 rounded-lg ${msg.from === 'me' ? 'bg-emerald-800 self-end' : 'bg-gray-800 self-start'}`;
-                    bubble.innerHTML = `<p>${msg.text}</p><div class="text-xs text-emerald-500 text-right mt-1">${msg.time}</div>`;
-                    chatWindow.appendChild(bubble);
-                });
-            }
-            chatWindow.scrollTop = chatWindow.scrollHeight;
         }
+    });
 
-        function sendMessage() {
-            const messageText = messageInput.value.trim();
-            if (!activeNodeId || !messageText) return;
+    nodeList.addEventListener('click', (e) => {
+        const targetNodeItem = e.target.closest('.node-item');
+        if (targetNodeItem) selectNode(targetNodeItem.dataset.nodeId);
+    });
 
-            socket.emit('send_message', { recipient: activeNodeId, content: messageText });
-            
-            if (!liveMessages[activeNodeId]) liveMessages[activeNodeId] = [];
-            liveMessages[activeNodeId].push({
-                from: 'me', text: messageText, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-            });
-            messageInput.value = '';
-            selectNode(activeNodeId);
-        }
-
-        socket.on('new_message', function(data) {
-            const nodeId = data.source_hash;
-            if (!liveNodes[nodeId]) {
-                liveNodes[nodeId] = { name: data.source_name, unread: 0, status: 'connected' };
-                populateNodeList();
-            }
-            if (!liveMessages[nodeId]) liveMessages[nodeId] = [];
-            liveMessages[nodeId].push({
-                from: 'them', text: data.content, time: new Date(data.timestamp * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-            });
-            if (activeNodeId === nodeId) {
-                selectNode(nodeId);
-            }
-        });
-
-        nodeList.addEventListener('click', (e) => {
-            const targetNodeItem = e.target.closest('.node-item');
-            if (targetNodeItem) selectNode(targetNodeItem.dataset.nodeId);
-        });
-
-        sendButton.addEventListener('click', sendMessage);
-        messageInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
-    </script>
+    sendButton.addEventListener('click', sendMessage);
+    messageInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') sendMessage();
+    });
+</script>
 </body>
 </html>
