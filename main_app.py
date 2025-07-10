@@ -22,7 +22,7 @@ def hardware_thread_func():
     btnA.pull = Pull.UP
     i2c = busio.I2C(board.SCL, board.SDA)
     reset_pin = DigitalInOut(board.D4)
-    display = Adafruit_SSD1306.SSD1306_I2C(128, 32, i2c, reset=reset_pin)
+    display = Adafruit_SSD1306.SSD1306Base(128, 32, i2c, reset=reset_pin)
     display.fill(0)
     display.show()
     time.sleep(1)
