@@ -20,4 +20,5 @@ adafruit-blinka>=8.0.0
 adafruit-circuitpython-busdevice==5.2.13
 adafruit-circuitpython-rfm69==2.1.25
 adafruit-circuitpython-ssd1306==2.12.21
+adafruit-circuitpython-framebuf==1.6.9
 RPi.GPIO==0.7.1
