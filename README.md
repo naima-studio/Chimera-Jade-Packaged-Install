@@ -1,4 +1,4 @@
-# JemOS
+# GemOS
 
 This repository contains all the software needed to turn a Raspberry Pi Zero 2 W into the Chimera Jade: a gateway LoRa messaging device. The device hosts its own Wi-Fi access point and provides a web interface for sending and receiving messages over the Reticulum Network Stack.
 
