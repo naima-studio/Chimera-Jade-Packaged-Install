@@ -1,191 +1,530 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Control Center</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js" crossorigin="anonymous"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Inter', sans-serif; }
-
-        /* Added styles for node-item */
-        .node-item {
-            cursor: pointer;
-            transition: transform 0.2s ease, background-color 0.2s ease;
+        body {
+            font-family: 'Inter', sans-serif;
+            overflow: hidden; /* Prevent all scrolling on the body */
         }
-        .node-item:hover {
+        /* Style for the menu items in the sidebar */
+        .sidebar-menu-item {
+            transition: all 0.2s ease-in-out;
+        }
+        .sidebar-menu-item:hover {
             transform: translateX(4px);
-            background-color: rgba(16, 185, 129, 0.1);
+            background-color: rgba(16, 185, 129, 0.1); /* Emerald hover */
         }
-
-        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #2d574e; border-radius: 3px; }
-
-        .sr-only {
-            position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
-            overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+        /* Style for the grid items on the settings page */
+        .settings-grid-item {
+            transition: all 0.2s ease-in-out;
+        }
+        .settings-grid-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.2), 0 4px 6px -4px rgb(0 0 0 / 0.2);
+        }
+        #sidebar.peer-hover\:translate-x-0:hover {
+            transform: translateX(0);
+        }
+        /* Custom scrollbar for chat windows */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #2d574e;
+            border-radius: 3px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #10b981;
+        }
+        .status-indicator {
+            transition: all 300ms ease-in-out;
+        }
+        #resize-handle {
+            cursor: ns-resize;
+            flex-shrink: 0;
         }
     </style>
 </head>
 <body class="bg-black text-emerald-200">
+
+<!-- Top Menu Bar -->
 <header class="fixed top-0 left-0 w-full bg-black border-b border-emerald-900 h-16 flex items-center justify-between px-6 z-30">
-    <div class="text-xl font-bold text-emerald-300">Pi Control Hub</div>
+    <div class="text-xl font-bold text-emerald-300">
+        Pi Control
+    </div>
+    <div id="clock" class="text-2xl font-semibold text-emerald-400">
+        <!-- Time will be injected here -->
+    </div>
+    <div class="flex items-center space-x-4">
+        <button class="p-2 rounded-lg hover:bg-emerald-900/50 transition-colors" title="Reboot">
+            <svg class="w-6 h-6 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h5m-5.223 2.223a9 9 0 1012.446-2.446M20 4v5h-5"></path>
+            </svg>
+        </button>
+        <button class="p-2 rounded-lg hover:bg-red-900/50 transition-colors" title="Power Off">
+            <svg class="w-6 h-6 text-red-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M5.636 5.636a9 9 0 1012.728 0M12 2v10" />
+            </svg>
+        </button>
+    </div>
 </header>
 
-<main class="pt-16">
-    <div id="page-messages" class="page container mx-auto p-4">
-        <div class="flex h-[calc(100vh-5rem)] bg-gray-900/50 border border-emerald-900 rounded-xl overflow-hidden">
+<!-- Hover Trigger -->
+<div class="fixed top-16 left-0 h-[calc(100vh-4rem)] w-6 z-50 peer"></div>
+
+<!-- Sidebar Menu -->
+<aside id="sidebar" class="fixed top-16 left-0 h-[calc(100vh-4rem)] w-72 bg-black shadow-2xl z-40 transform -translate-x-full transition-transform duration-300 ease-in-out peer-hover:translate-x-0 hover:translate-x-0 overflow-y-auto">
+    <div class="flex flex-col h-full">
+        <!-- Header / Home Button -->
+        <a href="#" id="home-link" class="block">
+            <header class="p-6 text-center border-b border-emerald-900 hover:bg-gray-800 transition-colors">
+                <div class="flex items-center justify-center h-8">
+                    <svg class="w-8 h-8 text-emerald-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+                </div>
+            </header>
+        </a>
+
+        <!-- Menu Links -->
+        <nav class="flex-grow p-4 space-y-2">
+            <!-- Messages -->
+            <a href="#" id="messages-link" class="sidebar-menu-item rounded-lg p-4 flex items-center space-x-4 text-emerald-200">
+                <div class="bg-emerald-900/50 p-2 rounded-lg">
+                    <svg class="w-6 h-6 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
+                </div>
+                <span class="font-semibold">Messages</span>
+            </a>
+            <!-- Network -->
+            <a href="#" id="network-link" class="sidebar-menu-item rounded-lg p-4 flex items-center space-x-4 text-emerald-200">
+                <div class="bg-emerald-900/50 p-2 rounded-lg">
+                    <svg class="w-6 h-6 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.98 12.001h16.04M12 2.05c-5.052 0-9 4.02-9 9s3.948 9 9 9 9-4.02 9-9-3.948-9-9-9z"></path></svg>
+                </div>
+                <span class="font-semibold">Network</span>
+            </a>
+            <!-- Settings -->
+            <a href="#" id="settings-link" class="sidebar-menu-item rounded-lg p-4 flex items-center space-x-4 text-emerald-200">
+                <div class="bg-emerald-900/50 p-2 rounded-lg">
+                    <svg class="w-6 h-6 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                </div>
+                <span class="font-semibold">Settings</span>
+            </a>
+        </nav>
+
+        <!-- Footer -->
+        <footer class="p-6 text-center text-xs text-emerald-600 border-t border-emerald-900">
+            <p>&copy; 2025</p>
+        </footer>
+    </div>
+</aside>
+
+<!-- Main Content Area -->
+<main class="relative transition-all duration-300 ease-in-out pt-16">
+    <!-- Welcome Page -->
+    <div id="page-welcome" class="page container mx-auto px-4 py-8">
+        <div id="widget-container" class="flex flex-col" style="height: calc(100vh - 6rem);">
+            <!-- Messages Widget -->
+            <div id="widget-messages" class="relative bg-gray-900/50 border border-emerald-900 rounded-xl flex flex-col overflow-hidden" style="flex: 1 1 50%;">
+                <h2 class="text-2xl font-bold text-emerald-300 p-6 flex-shrink-0 border-b border-emerald-900">
+                    Messages
+                </h2>
+                <div id="message-widget-list" class="flex-grow space-y-4 overflow-y-auto custom-scrollbar px-6 pt-6 pb-28">
+                    <!-- JS will populate this -->
+                </div>
+                <button id="fab-messages" class="absolute bottom-6 right-6 bg-emerald-600 hover:bg-emerald-500 text-white w-16 h-16 rounded-2xl flex items-center justify-center shadow-lg z-10">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
+                </button>
+            </div>
+
+            <!-- Resize Handle -->
+            <div id="resize-handle" class="h-2 my-2 bg-gray-800 hover:bg-emerald-700 transition-colors duration-200"></div>
+
+            <!-- Network Devices Widget -->
+            <div id="widget-network" class="bg-gray-900/50 border border-emerald-900 rounded-xl flex flex-col overflow-hidden" style="flex: 1 1 50%;">
+                <h2 class="text-2xl font-bold text-emerald-300 p-6 flex-shrink-0 border-b border-emerald-900">
+                    Network Devices
+                </h2>
+                <div id="network-widget-list" class="flex-grow overflow-y-auto custom-scrollbar p-6 space-y-3">
+                    <!-- JS will populate this -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Messages Page -->
+    <div id="page-messages" class="page container mx-auto px-4 py-8" style="display: none;">
+        <div class="flex h-[calc(100vh - 6rem)] bg-gray-900/50 border border-emerald-900 rounded-xl overflow-hidden">
+            <!-- Left Panel: Node List -->
             <div class="w-1/3 border-r border-emerald-900 flex flex-col">
                 <div class="p-4 border-b border-emerald-900">
                     <h2 class="text-xl font-bold text-emerald-300">Nodes</h2>
                 </div>
-                <div id="node-list" class="flex-grow overflow-y-auto custom-scrollbar"></div>
+                <div id="node-list" class="flex-grow overflow-y-auto custom-scrollbar">
+                    <!-- JS will populate this -->
+                </div>
             </div>
+            <!-- Right Panel: Chat Window -->
             <div class="w-2/3 flex flex-col">
                 <div id="chat-header" class="p-4 border-b border-emerald-900 flex items-center">
-                    <h3 class="text-xl font-bold text-emerald-300">Select a node to begin</h3>
+                    <h3 class="text-xl font-bold text-emerald-300">Select a node</h3>
                 </div>
-                <div id="chat-window" class="flex-grow p-4 overflow-y-auto custom-scrollbar space-y-4"></div>
+                <div id="chat-window" class="flex-grow p-4 overflow-y-auto custom-scrollbar space-y-4 flex items-center justify-center">
+                    <!-- JS will populate this -->
+                </div>
                 <div class="p-4 border-t border-emerald-900">
-                    <div class="flex space-x-2 items-center">
-                        <label for="message-input" class="sr-only">Message Input</label>
-                        <input
-                                type="text"
-                                id="message-input"
-                                placeholder="Type a message..."
-                                class="flex-grow bg-gray-800 border border-emerald-800 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-emerald-200"
-                                disabled
-                        />
-                        <button
-                                id="send-button"
-                                class="bg-emerald-700 hover:bg-emerald-600 text-white font-bold py-2 px-4 rounded-lg disabled:bg-emerald-900 disabled:cursor-not-allowed"
-                                disabled
-                        >
-                            Send
-                        </button>
+                    <div class="flex space-x-2">
+                        <input type="text" id="message-input" placeholder="Type a message..." class="flex-grow bg-gray-800 border border-emerald-800 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-emerald-200" disabled>
+                        <button id="send-button" class="bg-emerald-700 hover:bg-emerald-600 text-white font-bold py-2 px-4 rounded-lg disabled:bg-emerald-900 disabled:cursor-not-allowed" disabled>Send</button>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+
+    <!-- Network Page -->
+    <div id="page-network" class="page container mx-auto px-4 py-8" style="display: none;">
+        <div class="bg-gray-900/50 border border-emerald-900 rounded-xl h-[calc(100vh - 6rem)] flex flex-col overflow-hidden">
+            <h2 class="text-2xl font-bold text-emerald-300 p-6 flex-shrink-0 border-b border-emerald-900">
+                All Network Devices
+            </h2>
+            <div id="network-page-list" class="flex-grow overflow-y-auto custom-scrollbar p-6 space-y-3">
+                <!-- JS will populate this -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Page -->
+    <div id="page-settings" class="page container mx-auto px-4 py-8" style="display: none;">
+        <h1 class="text-4xl font-bold text-center mb-8 text-emerald-300">Settings</h1>
+        <div id="settings-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-4xl mx-auto">
+            <!-- Cards will be populated by JS -->
+        </div>
+    </div>
+
 </main>
 
 <script>
-    if (typeof io === "undefined") {
-        alert("Socket.IO client library failed to load!");
-        throw new Error("Socket.IO client library missing");
-    }
+    // --- DATA HANDLING ---
+    let liveNodes = {
+        "test-node-1": { name: "Sensor Alpha", unread: 1, status: 'connected' },
+        "test-node-2": { name: "Gateway Beta", unread: 0, status: 'spotty' },
+        "test-node-3": { name: "Weather Gamma", unread: 0, status: 'disconnected' }
+    };
+    let liveMessages = {
+        "test-node-1": [ { from: "them", text: "This is a test message from the mock node.", time: "Jul 6, 11:17 PM" } ],
+        "test-node-2": [],
+        "test-node-3": []
+    };
+    let liveDevices = {
+        "device-1": { name: "Main Router", status: 'connected' },
+        "device-2": { name: "Pi-Hole DNS", status: 'connected' },
+        "device-3": { name: "Living Room TV", status: 'spotty' },
+        "device-4": { name: "Security Camera 1", status: 'disconnected' },
+        "device-5": { name: "Smart Thermostat", status: 'connected' },
+    };
 
-    const socket = io();
-
-    let liveNodes = {};
-    let liveMessages = {};
     let activeNodeId = null;
 
+    // --- Page Navigation Script ---
+    const homeLink = document.getElementById('home-link');
+    const settingsLink = document.getElementById('settings-link');
+    const messagesLink = document.getElementById('messages-link');
+    const networkLink = document.getElementById('network-link');
+    const fabMessages = document.getElementById('fab-messages');
+
+    const pages = document.querySelectorAll('.page');
+    const welcomePage = document.getElementById('page-welcome');
+    const settingsPage = document.getElementById('page-settings');
+    const messagesPage = document.getElementById('page-messages');
+    const networkPage = document.getElementById('page-network');
+
+    function hideAllPages() {
+        pages.forEach(page => page.style.display = 'none');
+    }
+
+    function showPage(page) {
+        hideAllPages();
+        page.style.display = 'block';
+    }
+
+    homeLink.addEventListener('click', (e) => { e.preventDefault(); showPage(welcomePage); });
+    settingsLink.addEventListener('click', (e) => { e.preventDefault(); showPage(settingsPage); });
+    messagesLink.addEventListener('click', (e) => { e.preventDefault(); showPage(messagesPage); });
+    networkLink.addEventListener('click', (e) => { e.preventDefault(); showPage(networkPage); });
+    fabMessages.addEventListener('click', (e) => { e.preventDefault(); showPage(messagesPage); });
+
+    // --- UI Logic ---
+    const messageWidgetList = document.getElementById('message-widget-list');
+    const networkWidgetList = document.getElementById('network-widget-list');
+    const networkPageList = document.getElementById('network-page-list');
     const nodeList = document.getElementById('node-list');
     const chatHeader = document.getElementById('chat-header');
     const chatWindow = document.getElementById('chat-window');
     const messageInput = document.getElementById('message-input');
     const sendButton = document.getElementById('send-button');
 
-    function populateNodeList() {
-        nodeList.innerHTML = '';
-        const keys = Object.keys(liveNodes);
-        if (keys.length === 0) {
-            nodeList.innerHTML = '<p class="p-4 text-sm text-emerald-400">No nodes available</p>';
+    function getStatusColor(status) {
+        switch (status) {
+            case 'connected': return 'bg-green-500';
+            case 'spotty': return 'bg-yellow-500';
+            case 'disconnected': return 'bg-red-500';
+            default: return 'bg-gray-500';
+        }
+    }
+
+    function populateMessageWidget() {
+        messageWidgetList.innerHTML = '';
+        const allMessageNodes = Object.entries(liveMessages).filter(([nodeId, messages]) => messages.length > 0);
+        if (allMessageNodes.length === 0) {
+            messageWidgetList.innerHTML = `<div class="flex items-center justify-center h-full"><p class="text-emerald-600">No recent messages.</p></div>`;
             return;
         }
-        keys.forEach((nodeId) => {
+        allMessageNodes.forEach(([nodeId, messages]) => {
+            const lastMessage = messages[messages.length - 1];
             const node = liveNodes[nodeId];
-            const unreadBadge = node.unread && node.unread > 0 && activeNodeId !== nodeId
-                ? `<span class="ml-2 inline-block bg-emerald-600 text-xs rounded-full px-2">${node.unread}</span>`
-                : '';
+            if (lastMessage && node) {
+                const item = document.createElement('div');
+                item.className = 'p-3 bg-gray-800 rounded-lg cursor-pointer hover:bg-gray-700';
+                item.innerHTML = `
+                        <div class="flex justify-between items-center">
+                            <h4 class="font-bold text-emerald-300">${node.name}</h4>
+                            <span class="text-xs text-emerald-500 flex-shrink-0">${lastMessage.time}</span>
+                        </div>
+                        <p class="text-sm text-emerald-400 truncate pt-1">${lastMessage.text}</p>
+                    `;
+                item.addEventListener('click', () => { showPage(messagesPage); selectNode(nodeId); });
+                messageWidgetList.appendChild(item);
+            }
+        });
+    }
+
+    function renderDeviceItem(device) {
+        return `
+                <div class="p-3 bg-gray-800 rounded-lg flex justify-between items-center">
+                    <h4 class="font-semibold text-emerald-300">${device.name}</h4>
+                    <div class="w-3 h-3 rounded-full ${getStatusColor(device.status)} flex-shrink-0"></div>
+                </div>
+            `;
+    }
+
+    function populateNetworkWidgets() {
+        networkWidgetList.innerHTML = '';
+        networkPageList.innerHTML = '';
+        const allDevices = Object.values(liveDevices);
+        if (allDevices.length === 0) {
+            const noDevicesHTML = `<div class="flex items-center justify-center h-full"><p class="text-emerald-600">No devices found.</p></div>`;
+            networkWidgetList.innerHTML = noDevicesHTML;
+            networkPageList.innerHTML = noDevicesHTML;
+            return;
+        }
+        allDevices.forEach(device => {
+            const deviceHTML = renderDeviceItem(device);
+            networkWidgetList.innerHTML += deviceHTML;
+            networkPageList.innerHTML += deviceHTML;
+        });
+    }
+
+    function populateNodeList() {
+        nodeList.innerHTML = '';
+        const allNodes = Object.entries(liveNodes);
+        if (allNodes.length === 0) {
+            nodeList.innerHTML = '<div class="text-center text-emerald-600 p-4">No nodes found.</div>';
+            return;
+        }
+        allNodes.forEach(([nodeId, node]) => {
             const item = document.createElement('div');
-            item.className = `node-item p-4 cursor-pointer ${activeNodeId === nodeId ? 'bg-emerald-800' : ''}`;
+            const isUnread = node.unread > 0;
+            const shapeClass = isUnread ? 'rotate-45' : 'rounded-full';
+            item.className = `node-item p-4 cursor-pointer hover:bg-emerald-900/50 ${activeNodeId === nodeId ? 'bg-emerald-800' : ''}`;
             item.dataset.nodeId = nodeId;
-            item.innerHTML = `<h4 class="font-semibold text-emerald-200">${node.name}${unreadBadge}</h4>`;
+            item.innerHTML = `
+                    <div class="flex justify-between items-center">
+                        <h4 class="font-semibold text-emerald-200">${node.name}</h4>
+                        <div class="relative flex items-center justify-end h-6 w-8">
+                            <div class="status-display flex items-center justify-center absolute inset-0">
+                                <div class="w-6 h-6 flex items-center justify-center">
+                                    <div class="status-indicator w-3 h-3 ${getStatusColor(node.status)} ${shapeClass}"></div>
+                                </div>
+                            </div>
+                            <button class="clear-btn hidden absolute right-0 top-1/2 -translate-y-1/2 text-red-400 hover:text-red-300">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                            </button>
+                        </div>
+                    </div>
+                `;
             nodeList.appendChild(item);
         });
     }
 
     function selectNode(nodeId) {
         activeNodeId = nodeId;
-        const node = liveNodes[nodeId];
-        if (node) node.unread = 0;
+        if (liveNodes[nodeId]) { liveNodes[nodeId].unread = 0; }
         populateNodeList();
-        chatHeader.innerHTML = `<h3 class="text-xl font-bold text-emerald-300">${node ? node.name : 'Select a node'}</h3>`;
+        const node = liveNodes[nodeId];
+        chatHeader.innerHTML = `<h3 class="text-xl font-bold text-emerald-300 flex-grow">${node ? node.name : 'Select a node'}</h3>`;
         messageInput.disabled = !node;
         sendButton.disabled = !node;
         chatWindow.innerHTML = '';
-        if (node && liveMessages[nodeId]) {
+        if (node && liveMessages[nodeId] && liveMessages[nodeId].length > 0) {
+            chatWindow.classList.remove('items-center', 'justify-center');
             liveMessages[nodeId].forEach(msg => {
                 const bubble = document.createElement('div');
                 bubble.className = `flex flex-col max-w-xs md:max-w-md p-3 rounded-lg ${msg.from === 'me' ? 'bg-emerald-800 self-end' : 'bg-gray-800 self-start'}`;
                 bubble.innerHTML = `<p>${msg.text}</p><div class="text-xs text-emerald-500 text-right mt-1">${msg.time}</div>`;
                 chatWindow.appendChild(bubble);
             });
+        } else {
+            chatWindow.classList.add('items-center', 'justify-center');
+            chatWindow.innerHTML = '<div class="text-center text-emerald-600">No messages yet.</div>';
         }
         chatWindow.scrollTop = chatWindow.scrollHeight;
     }
 
     function sendMessage() {
-        const messageText = messageInput.value.trim();
-        if (!activeNodeId || !messageText) return;
-        if (!socket || typeof socket.emit !== "function") {
-            console.error("Socket is not ready");
-            return;
-        }
-        socket.emit('send_message', { recipient: activeNodeId, content: messageText });
-        if (!liveMessages[activeNodeId]) liveMessages[activeNodeId] = [];
-        liveMessages[activeNodeId].push({
+        if (!activeNodeId || !messageInput.value.trim()) return;
+        const newMessage = {
             from: 'me',
-            text: messageText,
-            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        });
+            text: messageInput.value.trim(),
+            time: new Date().toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })
+        };
+        if (!liveMessages[activeNodeId]) { liveMessages[activeNodeId] = []; }
+        liveMessages[activeNodeId].push(newMessage);
         messageInput.value = '';
         selectNode(activeNodeId);
+        populateMessageWidget();
     }
 
-    socket.on('new_message', function(data) {
-        console.log('Incoming new_message data:', data);
+    function clearConversation(nodeId) {
+        if (liveMessages[nodeId]) { liveMessages[nodeId] = []; }
+        if (liveNodes[nodeId]) { liveNodes[nodeId].unread = 0; }
+        populateNodeList();
+        populateMessageWidget();
+        if (activeNodeId === nodeId) { selectNode(nodeId); }
+    }
 
-        const nodeId = data.source_hash || data.nodeId || 'unknown-node';
-        const nodeName = data.source_name || data.name || 'Unnamed Node';
+    function hideAllTrashcans() {
+        document.querySelectorAll('.node-item').forEach(item => toggleTrashcan(item, false));
+    }
 
-        if (!liveNodes[nodeId]) {
-            liveNodes[nodeId] = { name: nodeName, unread: 1, status: 'connected' };
-            liveMessages[nodeId] = [];
+    function toggleTrashcan(nodeItem, show) {
+        const statusDisplay = nodeItem.querySelector('.status-display');
+        const clearButton = nodeItem.querySelector('.clear-btn');
+        if (show) {
+            statusDisplay.classList.add('hidden');
+            clearButton.classList.remove('hidden');
         } else {
-            if (activeNodeId !== nodeId) {
-                liveNodes[nodeId].unread = (liveNodes[nodeId].unread || 0) + 1;
-            }
+            statusDisplay.classList.remove('hidden');
+            clearButton.classList.add('hidden');
         }
+    }
 
-        liveMessages[nodeId].push({
-            from: 'them',
-            text: data.content || '',
-            time: new Date((data.timestamp || Date.now() / 1000) * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        });
-
-        if (activeNodeId === nodeId) {
-            selectNode(nodeId);
-        } else {
-            populateNodeList();
-        }
-    });
-
+    // --- Event Delegation for Node List ---
     nodeList.addEventListener('click', (e) => {
         const targetNodeItem = e.target.closest('.node-item');
-        if (targetNodeItem) selectNode(targetNodeItem.dataset.nodeId);
+        if (!targetNodeItem) return;
+
+        // Handle clear button click
+        if (e.target.closest('.clear-btn')) {
+            const nodeIdToClear = targetNodeItem.dataset.nodeId;
+            clearConversation(nodeIdToClear);
+            return;
+        }
+
+        // Handle regular node selection
+        hideAllTrashcans();
+        selectNode(targetNodeItem.dataset.nodeId);
+    });
+
+    nodeList.addEventListener('contextmenu', (e) => {
+        const targetNodeItem = e.target.closest('.node-item');
+        if (!targetNodeItem) return;
+
+        e.preventDefault();
+        hideAllTrashcans();
+        toggleTrashcan(targetNodeItem, true);
+    });
+
+    // Global listener to hide trash can on any click outside the list
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.node-item')) {
+            hideAllTrashcans();
+        }
     });
 
     sendButton.addEventListener('click', sendMessage);
     messageInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') sendMessage();
+        if (e.key === 'Enter') { sendMessage(); }
     });
+
+    // --- Resizing Logic ---
+    const resizeHandle = document.getElementById('resize-handle');
+    const topWidget = document.getElementById('widget-messages');
+    const bottomWidget = document.getElementById('widget-network');
+    let isResizing = false;
+
+    resizeHandle.addEventListener('mousedown', (e) => {
+        isResizing = true;
+        document.body.style.cursor = 'ns-resize';
+        document.body.style.userSelect = 'none';
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp, { once: true });
+    });
+
+    function onMouseMove(e) {
+        if (!isResizing) return;
+        const container = document.getElementById('widget-container');
+        const containerRect = container.getBoundingClientRect();
+        let newTopHeight = e.clientY - containerRect.top;
+
+        const minHeight = 100; // Minimum height in pixels
+        const handleHeight = resizeHandle.offsetHeight;
+
+        if (newTopHeight < minHeight) newTopHeight = minHeight;
+        if (newTopHeight > containerRect.height - minHeight - handleHeight) {
+            newTopHeight = containerRect.height - minHeight - handleHeight;
+        }
+
+        const newTopFlex = newTopHeight;
+        const newBottomFlex = containerRect.height - newTopHeight - handleHeight;
+
+        topWidget.style.flex = `0 1 ${newTopFlex}px`;
+        bottomWidget.style.flex = `0 1 ${newBottomFlex}px`;
+    }
+
+    function onMouseUp() {
+        isResizing = false;
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+        document.removeEventListener('mousemove', onMouseMove);
+    }
+
+    // --- Clock Logic ---
+    function updateTime() {
+        const clockElement = document.getElementById('clock');
+        if (clockElement) {
+            const now = new Date();
+            clockElement.textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }
+    }
+
+    // Initial Load
+    document.addEventListener('DOMContentLoaded', () => {
+        showPage(welcomePage);
+        populateMessageWidget();
+        populateNodeList();
+        populateNetworkWidgets();
+        selectNode(null);
+        updateTime();
+        setInterval(updateTime, 1000);
+    });
+
 </script>
 </body>
 </html>
