@@ -1,4 +1,4 @@
-from flask import Flask, app, render_template, request
+from flask import Flask, render_template, request
 
 from constants import WEB_APP_HOST_IP, WEB_APP_PORT
 
@@ -9,22 +9,27 @@ class UserWebApp():
         self.app = Flask("Update this")
         #TODO Update this
         self.app.config['SECRET_KEY'] = 'pi-control-hub-secret!'
-        self.app.run(app, host=WEB_APP_HOST_IP, port=WEB_APP_PORT, allow_unsafe_werkzeug=True)
+        # Register routes
+        self.setup_routes()
+        self.run()
 
-
-
-    @app.route('/')
-    def index():
-        return render_template('interface.html')
-    
-    
-    @app.route('/send_message', methods=['POST'])
-    def handle_send_message():
-        message = request.form['message']
-        # TODO Send this to lxmf handler
-        return f"Received message: '{message}'"
+    def setup_routes(self):
+        @self.app.route('/')
+        def index():
+            return render_template('interface.html')
         
+        @self.app.route('/send_message', methods=['POST'])
+        def handle_send_message():
+            message = request.form['message']
+            # TODO Send this to lxmf handler
+            return f"Received message: '{message}'"
 
+    def run(self):
+        self.app.run(host=WEB_APP_HOST_IP, port=WEB_APP_PORT, allow_unsafe_werkzeug=True)        
+
+    
+    
+    
     # @socketio.on('send_message')
     # def handle_send_message(json_data):
     #     recipient_hexhash = json_data['recipient']
